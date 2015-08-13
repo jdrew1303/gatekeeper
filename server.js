@@ -20,7 +20,8 @@ var config = loadConfig();
 function authenticate(clientId, code, cb) {
   var appConfig = _.findWhere(config.apps, {'oauth_client_id': clientId});
   if (!appConfig) {
-    cb('No app configurated for client ID : ' + clientId);
+    cb(404);
+    return;
   }
   console.log('Authenticating for app :');
   console.log(appConfig);
@@ -63,12 +64,22 @@ app.all('*', function (req, res, next) {
 
 
 app.get('/authenticate/:client/:code', function(req, res) {
-  console.log('client id:' + req.params.client);
-  console.log('authenticating code:' + req.params.code);
+  console.log('ClientId: ' + req.params.client);
+  console.log('Authenticating Code: ' + req.params.code);
   authenticate(req.params.client, req.params.code, function(err, token) {
-    var result = err || !token ? {"error": "bad_code"} : { "token": token };
-    console.log(result);
-    res.json(result);
+    var code, result;
+    if (err === 404) {
+      code = 404;
+      result = {'error': 'No app found for clientId : ' + req.params.client};
+    } else if (err || !token) {
+      code = 401;
+      result = {'error': 'Bad code'};
+    } else {
+      code = 200;
+      result = {'token': token};
+    }
+    res.status(code).json(result);
+    console.log('Response : ' + code, result, err);
   });
 });
 
